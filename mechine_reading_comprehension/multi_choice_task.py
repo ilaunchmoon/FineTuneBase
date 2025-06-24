@@ -34,6 +34,8 @@
 
 
 """ 
+import numpy as np
+import evaluate
 from datasets import DatasetDict
 from transformers import AutoModelForMultipleChoice, AutoTokenizer, Trainer, TrainingArguments
 
@@ -106,12 +108,53 @@ def process_data(examples):
 test_examples = c3["train"].select(range(10)).map(process_data, batched=True)
 print(test_examples)  # 输出: Dataset({features: ['id', 'context', 'question', 'choice', 'answer', 'input_ids', 'token_type_ids', 'attention_mask', 'labels'], num_rows: 10})
 
+tokenized_c3 = c3.map(process_data, batched=True)
 
 
 
+# 创建模型
+model = AutoModelForMultipleChoice.from_pretrained(model_cache_dir)
 
 
 
+# 创建评估函数
+accuracy = evaluate.load("accuracy")
+
+def compute_metrice(pred):
+    predictions, labels = pred
+    predictions = np.argmax(predictions, axis=-1)
+    return accuracy.compute(predictions=predictions, references=labels)
+
+
+
+# 配置训练参数
+training_args = TrainingArguments(
+    output_dir="/Users/icur/CursorProjects/FineTuneBase/outputs/multichoice",
+    per_device_train_batch_size=10,
+    per_device_eval_batch_size=20,
+    num_train_epochs=1,
+    eval_strategy="epoch",
+    save_strategy="epoch",
+    logging_steps=500,
+    load_best_model_at_end=True 
+)
+
+
+# 创建训练器
+trainer = Trainer(
+    model=model,
+    args=training_args,
+    train_dataset=tokenized_c3["train"],
+    eval_dataset=tokenized_c3["validation"],
+    compute_metrics=compute_metrice
+)
+
+
+# 开启训练
+trainer.train()
+
+
+# 模型预测
 
 
 
