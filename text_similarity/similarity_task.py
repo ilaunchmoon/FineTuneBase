@@ -30,7 +30,7 @@ def process_func(examples):
 
 # 对数据进行batch处理并删除数据集中原始的字段: Sentence1 Sentence1 label
 tokenized_datasets = datasets.map(process_func, batched=True, remove_columns=datasets["train"].column_names)
-print(tokenized_datasets["train"][0])
+# print(tokenized_datasets["train"][0])
 
 
 
@@ -39,16 +39,28 @@ model = AutoModelForSequenceClassification.from_pretrained(model_dir)
 
 
 # 评估函数
-acc_metirc = evaluate.load("accuracy")
-f1_metirc = evaluate.load("f1")
+acc_metric = evaluate.load("accuracy")
+f1_metric = evaluate.load("f1")
 
 def eval_metric(eval_predict):
     predictions, labels = eval_predict
+    # 确保predictions和labels不是None
+    if predictions is None or labels is None:
+        return {"accuracy": 0.0, "f1": 0.0}
     predictions = predictions.argmax(axis=-1)
-    acc = acc_metirc.compute(predictions=predictions, reference=labels)
-    f1 = f1_metirc.compute(predictions=predictions, references=labels)
-    acc.update(f1)
-    return acc
+    
+    # 计算accuracy - 注意参数名是references而不是reference
+    acc = acc_metric.compute(predictions=predictions, references=labels)
+    
+    # 计算f1 - 确保参数名一致
+    f1 = f1_metric.compute(predictions=predictions, references=labels)
+    
+    # 合并结果
+    result = {}
+    result.update(acc)
+    result.update(f1)
+    
+    return result
 
 
 

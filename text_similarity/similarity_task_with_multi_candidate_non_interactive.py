@@ -89,20 +89,20 @@ def process_func(examples):
     
     """
     tokenized_examples = {k:[v[i:i+2] for i in range(0, len(v), 2)] for k, v in tokenized_examples.items()}
-    tokenized_examples["labels"] =  examples["label"]      # 给添加tokenized_examples的字段labels
+    tokenized_examples["labels"] = labels      # 给添加tokenized_examples的字段labels
     return tokenized_examples
 
 
 # 对数据进行batch处理并删除数据集中原始的字段: Sentence1 Sentence1 label
 tokenized_datasets = datasets.map(process_func, batched=True, remove_columns=datasets["train"].column_names)
-print(tokenized_datasets["train"][0])
+# print(tokenized_datasets["train"][0])
 
 
 
 # 创建模型
 # 由于双模型组合没有现成得模型可以用, 需要自定义
-class DualModels(BertPreTrainedModel):  # 继承BertPreTrainedModel主要时为了使用.from_pretrained()方法
-    def __init__(self, config:PretrainedConfig, *inputs, **kwargs):
+class DualModels(BertPreTrainedModel):
+    def __init__(self, config: PretrainedConfig, *inputs, **kwargs):
         super().__init__(config, *inputs, **kwargs)
         self.bert = BertModel(config)
         self.post_init()
@@ -122,12 +122,13 @@ class DualModels(BertPreTrainedModel):  # 继承BertPreTrainedModel主要时为�
     ):
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict
 
-        # 1. 获取sentenceA和sentenceB的输入
-        senA_input_ids, senB_input_ids = input_ids[:0], input_ids[:1]
-        senA_attention_mask, senB_attention_mask = attention_mask[:0], attention_mask[:1]
-        senA_token_type_ids, senB_token_type_ids = token_type_ids[:0], token_type_ids[:1]
-        
-        # 2.获取sentenceA和sentenceB的embedding表示向量, 向量表示就是bert模型的输出
+        # 修复：正确的索引方式
+        # input_ids shape: [batch_size, 2, seq_len]
+        senA_input_ids, senB_input_ids = input_ids[:, 0, :], input_ids[:, 1, :]
+        senA_attention_mask, senB_attention_mask = attention_mask[:, 0, :], attention_mask[:, 1, :]
+        senA_token_type_ids, senB_token_type_ids = token_type_ids[:, 0, :], token_type_ids[:, 1, :]
+            
+        # 获取sentenceA和sentenceB的embedding表示向量
         senA_outputs = self.bert(
             senA_input_ids,
             attention_mask=senA_attention_mask,
@@ -140,7 +141,7 @@ class DualModels(BertPreTrainedModel):  # 继承BertPreTrainedModel主要时为�
             return_dict=return_dict,
         )
 
-        senA_pooled_output = senA_outputs[1]               # 即为A的最终Bert编码表示[batch, dim]
+        senA_pooled_output = senA_outputs[1]  # A的最终Bert编码表示[batch, dim]
 
         senB_outputs = self.bert(
             senB_input_ids,
@@ -154,23 +155,26 @@ class DualModels(BertPreTrainedModel):  # 继承BertPreTrainedModel主要时为�
             return_dict=return_dict,
         )
 
-        senB_pooled_output = senB_outputs[1]               # 即为B的最终Bert编码表示[batch, dim]
-
-
-        # 3. 计算相似度作为评估方法
-        # 原本的分类模型会在bert输出后计算logits
-        cos = CosineSimilarity(senA_outputs, senB_outputs)  # [batch]   
+        senB_pooled_output = senB_outputs[1]  # B的最终Bert编码表示[batch, dim]
 
         # 计算相似度
+        cos = CosineSimilarity(dim=1)(senA_pooled_output, senB_pooled_output)  # [batch]   
+
+        # 计算loss
         loss = None
         if labels is not None:
-            loss 
+            # 将 [0, 1] 标签转换为 [-1, 1] 以适配 CosineEmbeddingLoss
+            cosine_labels = torch.where(labels == 1, 1.0, -1.0)
+            loss_fct = CosineEmbeddingLoss(margin=0.3)  # 0.3为阈值
+            loss = loss_fct(senA_pooled_output, senB_pooled_output, cosine_labels)
+        
+        if loss is not None:
+            return {"loss": loss, "logits": cos}
+        else:
+            return {"logits": cos}
 
 
-
-
-
-model = AutoModelForSequenceClassification.from_pretrained(model_dir, numbel_label=1)       # 预测的相似度得分, 所以输出维度为1, 此时该模型任务头自动会任务回归任务
+model = DualModels.from_pretrained(model_dir)      
 
 
 # 评估函数
@@ -179,12 +183,22 @@ f1_metirc = evaluate.load("f1")
 
 def eval_metric(eval_predict):
     predictions, labels = eval_predict
-    predictions = [int(p > 0.5) for p in predictions]
-    labels = [int(label) for label in labels]               # 训练的时候由于使用均方差损失, label是float类型, 现在需要改成int类型
-    acc = acc_metirc.compute(predictions=predictions, reference=labels)
-    f1 = f1_metirc.compute(predictions=predictions, references=labels)
+    
+    # 将cosine similarity转换为二分类预测 (-1 或 1)
+    predictions = [1 if p > 0.7 else -1 for p in predictions]
+    
+    # labels 已经是 [-1, 1] 格式，不需要转换
+    
+    # 先转换为 [0, 1] 格式进行评估计算
+    predictions_binary = [1 if p > 0 else 0 for p in predictions]
+    labels_binary = [1 if l > 0 else 0 for l in labels]
+    
+    acc = acc_metirc.compute(predictions=predictions_binary, references=labels_binary)
+    f1 = f1_metirc.compute(predictions=predictions_binary, references=labels_binary, average='binary', pos_label=1)
+    
     acc.update(f1)
     return acc
+
 
 
 
@@ -216,15 +230,49 @@ trainer = Trainer(
 trainer.train()
 
 
-# 开启评估
-trainer.evaluate(tokenized_datasets["test"])
+# 自定义预测类型
+class SentenceSimilarityPipeline:
+    def __init__(self, model, tokenizer)->None:
+        self.model = model.bert                 # 模型预测只需要将输入的文本进行编码, 进而向量表示, 所以只需使用bert部分即可
+        self.tokenizer = tokenizer
+        self.device = model.device
+
+    # 输入预处理, 使得能够满足llm的输入要求
+    def preprocess(self, sentenceA, sentenceB):
+        return self.tokenizer([sentenceA, sentenceB], max_length=128, truncation=True, padding=True, return_tensors="pt")
+    
+    # 预测过程
+    def predict(self, inputs):
+        inputs = {k:v.to(self.device) for k, v in inputs.items()}
+        return self.model(**inputs)[1]
+
+
+    # 模型输出后处理
+    def postprocess(self, logits):
+        cos = CosineSimilarity()(logits[None, 0, :], logits[None, 1, :]).squeeze().cpu().item()
+        return cos
+
+    def __call__(self, sentenceA, sentenceB, return_vectors=False):      # 为了直接使用MSentenceSimilarityPipeline()即进行调用, return_vectors用于标记是否返回sentenceA和sentenceB的最后向量表示
+        """
+            先对输入进行预处理
+            将预处理的结果输入给llm进行预测
+            对预测结果进行后处理
+            输出最后的结果
+        """ 
+        inputs = self.preprocess(sentenceA, sentenceB)
+        logits = self.predict(inputs)
+        if return_vectors:
+            return self.postprocess(logits), logits
+        else:
+            return self.postprocess(logits)
 
 
 # 开启测试
-model.config.id2label = {0: "不相似", 1: "相似"}
-pipe = pipeline("text-classification", model=model, tokenizer=tokenizer)
 
-# 需指定句子对的输入, 需要将它们使用一个字典的方法构成一个pair作为输入
-# 字典中的键必须为: text和text_pair
-response = pipe({"text": "喜欢你", "text_pair": "好喜欢你"}, funcation_to_appley=None)
-response["label"] = "相似" if response["score"] > 0.5 else "不相似"
+pipe = SentenceSimilarityPipeline(model=model, tokenizer=tokenizer)
+
+response = pipe("我喜欢你", "我好喜欢你")
+print(response)
+
+
+
