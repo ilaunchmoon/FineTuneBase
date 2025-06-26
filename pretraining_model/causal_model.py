@@ -78,7 +78,8 @@ trainer.train()
 
 # 开启测试
 # text-generation代表生成模型
-pipe = pipeline("text-generation", model=model, tokenizer=tokenizer,)
+# 生成的最大长度 max_length, do_sample为True代表生成采样
+pipe = pipeline("text-generation", model=model, tokenizer=tokenizer, max_length=128, do_sample=True)
 response = pipe("在微调大型模型时, 对于不同层的参数可以设置不同的weight_decay值")
 print(response)
 
