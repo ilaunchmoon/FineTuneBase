@@ -204,7 +204,7 @@ def eval_metric(eval_predict):
 
 # 配置训练参数
 training_args = TrainingArguments(
-    output_dir="/Users/icur/CursorProjects/FineTuneBase/outputs/text_similarity",
+    output_dir="/Users/icur/CursorProjects/FineTuneBase/outputs/text_similarity_dumodel",
     per_device_train_batch_size=10,
     per_device_eval_batch_size=20,
     num_train_epochs=1,
