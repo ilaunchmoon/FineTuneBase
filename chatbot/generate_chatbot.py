@@ -55,7 +55,7 @@ def process_func(examples):
     input_ids, attention_mask, labels = [], [], []
 
     # 将instruction字段和input拼接到一起作为模型输入
-    instruction = tokenizer("\n".join(["Human: "+ examples["instruction"] + examples["input"]]).strip() + "\n\n Assistant: ")
+    instruction = tokenizer("\n".join(["Human: "+ examples["instruction"], examples["input"]]).strip() + "\n\n Assistant: ")
 
     # 将output字段和结束标注token结合在一起, 作为真实标签
     response = tokenizer(examples["output"] + tokenizer.eos_token)
