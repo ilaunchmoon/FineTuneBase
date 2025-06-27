@@ -15,5 +15,11 @@
         即prompt内容不是人为固定设置的, 模型需要自己去学习
 
 
-    
+    注意:
+
+         hard prompt tuing 效果一般都比 soft prompt tuning更好, 因为 soft prompt tuning 是随机初始化一个 prompt, 它可能很难学习到与下游任务适配
+
+         针对 soft prompt tuning 具有无法很好的适配下游任务的prompt
+         p-tuning的解决方案: 将soft-prompt的具体内容使用一个MLP或LSTM作为一个小型编码器对它进行编码, 使得soft-prompt的具体内容能够利用该小型编码器学习到更加适配下游任务的表征
+
 """
