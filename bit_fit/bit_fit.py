@@ -60,7 +60,8 @@ tokenized_ds = ds.map(process_func, batched=True, remove_columns=ds["train"].col
 model = AutoModelForCausalLM.from_pretrained(model_dir)
 
 
-# 查看有多少参数可训练
+# 将模型中所有可训练参数的bias都冻结住, 不让它参与训练
+# 这就是它最为核心的思想
 num_param = 0
 for name, param in model.named_parameters():
     if "bias" in name:

@@ -1,32 +1,31 @@
 """
-    lora 配置 lora的参数步骤
+    IA3 配置 IA3的参数步骤
 
-        from peft import LoraConfig, TaskType, get_peft_model, 
+        from peft import IA3Config, TaskType, get_peft_model, 
 
-        LoraConfig:  用于配置lora微调的参数信息
+        IA3Config:  用于配置IA3微调的参数信息
 
-        get_peft_model: 通过它结合LoraConfig获取一个lora微调的模型
+        get_peft_model: 通过它结合PromptEncoderConfig获取一个IA3微调的模型
 
         TaskType: 任务类型, peft有很多中任务类型, 所以需要它来指明任务类型
-
         
 
 
-    lora 配置
+    IA3 配置
 
-        step1: 配置lora的微调参数config
+        step1: 配置IA3的微调参数config
                 
             task_type=TaskType.CAUSAL_LM,                                               # 指明为因果生成任务, TaskType类下有很多中任务: 如SEQ_CLS(文本分类)等
-            target_modules=["query_key_value", "dense_4h_to_h"],                        # 指定LLM中到底哪些模块的参数参与lora微调训练, 还可以通过模型参数名称结合正则匹配的方法来匹配到某一些模块的参数来进行微调, 如".*\.1.*query_key_value"代表层数以1开头的query_key_value模块参与lora微调
-            r=8,                                                                        # 指定lora微调的低秩矩阵的秩为8, 一般都设置为8或16, 少数情况下设置为32
-            lora_alpha=16,                                                              # 指定lora微调的低秩矩阵的缩放因子, 一般为r的2倍
-            lora_dropout=0.1,                                                           # 指定LLM中到底哪些模块的参数参与lora微调训练中的dropout_rate
-            modules_to_save=["word_embedings"],                                         # 除了target_modules中指定的微调参数模块, 还可以通过modules_to_save来指定某个其他参数模块进行微调, 比如分类模型中的分类头就是一个MLP, 通过modules_to_save可以额外设置任务头的参数参与微调训练
+            target_modules=["query_key_value", "dense_4h_to_h"],                        # 指定LLM中到底哪些模块的参数参与IA3微调训练, 还可以通过模型参数名称结合正则匹配的方法来匹配到某一些模块的参数来进行微调, 如".*\.1.*query_key_value"代表层数以1开头的query_key_value模块参与IA3微调
+            feedforward_modules=['mlp.dense_4h_to-h'],                                  # 明确指出在 target_modules 列表中, 哪些模块属于FFN组件, 主要用于在这些模块上应用一个小的偏置项, 只有被列在 feedforward_modules中的模块, 才会应用这个额外的 ff_b 偏置
+            init_ia3_weights=True,                                                      # 控制是否初始化 IA3 适配器参数（缩放向量 l), 默认为True
+            modules_to_save=["word_embedings"],                                         # 除了target_modules中指定的微调参数模块, 还可以通过modules_to_save来指定某个其他参数模块进行微调, 比如分类模型中的分类头就是一个MLP, 通过modules_to_save可以额外设置任务头的参数参与微调训练                                          
 
-                
+
+
             注意: 这些都会影响最终可训练的参数量
 
-        step2: 使用get_peft_model(), 结合prompt-tuning配置好的参数config和基座模型创建微调的模型
+        step2: 使用get_peft_model(), 结合配置好的参数config和基座模型创建微调的模型
 
         
         step3: 其他都和之前一样
@@ -39,7 +38,7 @@
                 使用 peft_model = PeftModel(model, mode_id="微调训练好的检查点文件路径"), model为基座模型, 来加载微调好的模型
 
 
-        step5: 将lora微调好的检查点文件和基座模型进行合并
+        step5: 将IA3微调好的检查点文件和基座模型进行合并
 
                 使用上一步的加载微调好的模型, 进行直接合并
 
@@ -51,12 +50,8 @@
 
 
 
-
-
-
-
 """
-from peft import LoraConfig, TaskType, get_peft_model, PeftModel
+from peft import IA3Config, TaskType, get_peft_model, PeftModel
 from datasets import Dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM, DataCollatorForSeq2Seq, TrainingArguments, Trainer
 
@@ -117,29 +112,27 @@ tokenized_ds = ds.map(process_func, batched=True, remove_columns=ds.column_names
 # 加载模型
 model = AutoModelForCausalLM.from_pretrained("/Users/icur/CursorProjects/FineTuneBase/model_cache/Langboat")
 
-# 获取该模型中所有参数, 方便lora微调target_modules参数指定到底哪些模型参数参与微调训练
-# lora微调的模型参数主要集中在注意力模块、FNN模块、还有就是某些分类模型中的分类头模块
+# 获取该模型中所有参数, 方便IA3微调target_modules参数指定到底哪些模型参数参与微调训练
+# IA3微调的模型参数主要集中在注意力模块、FNN模块、还有就是某些分类模型中的分类头模块
 for name, param in model.parameters():
     print(name)     
 
 
 # 配置prompt tuning
-config = LoraConfig(
+config = IA3Config(
     task_type=TaskType.CAUSAL_LM,                                               # 指明为因果生成任务, TaskType类下有很多中任务: 如SEQ_CLS(文本分类)等
-    target_modules=["query_key_value", "dense_4h_to_h"],                        # 指定LLM中到底哪些模块的参数参与lora微调训练, 还可以通过模型参数名称结合正则匹配的方法来匹配到某一些模块的参数来进行微调, 如".*\.1.*query_key_value"代表层数以1开头的query_key_value模块参与lora微调
-    r=8,                                                                        # 指定lora微调的低秩矩阵的秩为8
-    lora_alpha=16,                                                              # 指定lora微调的低秩矩阵的缩放因子, 一般为r的2倍
-    lora_dropout=0.1,                                                           # 指定LLM中到底哪些模块的参数参与lora微调训练中的dropout_rate
-    modules_to_save=["word_embedings"],                                         # 除了target_modules中指定的微调参数模块, 还可以通过modules_to_save来指定某个其他参数模块进行微调, 比如分类模型中的分类头就是一个MLP, 通过modules_to_save可以额外设置任务头的参数参与微调训练                                          
-
+    target_modules=["query_key_value", "dense_4h_to_h"],                        # 指定LLM中到底哪些模块的参数参与IA3微调训练, 还可以通过模型参数名称结合正则匹配的方法来匹配到某一些模块的参数来进行微调, 如".*\.1.*query_key_value"代表层数以1开头的query_key_value模块参与IA3微调
+    feedforward_modules=['mlp.dense_4h_to-h'],                                  # 明确指出在 target_modules 列表中，哪些模块​​属于FFN​的组件, 主要用于在这些模块上应用一个小的偏置项, 只有被列在 feedforward_modules中的模块，才会应用这个额外的 ff_b 偏置
+    init_ia3_weights=True,                                                      # 控制是否初始化 IA3 适配器参数（缩放向量 l), 默认为True
+    # modules_to_save=["word_embedings"],                                         # 除了target_modules中指定的微调参数模块, 还可以通过modules_to_save来指定某个其他参数模块进行微调, 比如分类模型中的分类头就是一个MLP, 通过modules_to_save可以额外设置任务头的参数参与微调训练                                          
 )
 
 
 
-# 根据lora配置的参数来创建peft模型
-model = get_peft_model(model, config)         # 其中model为基座模型, config就是配置lora微调的参数
+# 根据IA3配置的参数来创建peft模型
+model = get_peft_model(model, config)         # 其中model为基座模型, config就是配置IA3微调的参数
 
-# print(model.print_trainable_parameters())   # 可以输出使用lora微调方法的可训练参数为多少
+# print(model.print_trainable_parameters())   # 可以输出使用IA3微调方法的可训练参数为多少
 
 
 # 其他都不变
@@ -176,7 +169,7 @@ peft_model_checkpoint_dir=""
 # 需要注意的是: 使用peft_model要确保输入的测试数据和微调后模型在同一个device上
 peft_model = PeftModel.from_pretrained(model=model, mode_id=peft_model_checkpoint_dir)   
 
-# 将基座模型和lora微调训练得到权重进行合并
+# 将基座模型和IA3微调训练得到权重进行合并
 merged_model = peft_model.merge_and_unload()
 
 
