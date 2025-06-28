@@ -110,10 +110,12 @@ trainer.train()
 
 # 推理测试
 pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
-inputs = "Human: {} \n {}".format("考试有哪些高分技巧?", "").strip() + "\n\n Assistant: "
-response1 = pipe(inputs, max_length=256, do_sample=True)
-response2 = pipe(inputs, max_length=256, top_k=10)
-response3 = pipe(inputs, max_length=256, top_p=0.7)
+input_text = "Human: {} \n {}".format("考试有哪些高分技巧?", "").strip() + "\n\n Assistant: "
+ipts = tokenizer(input_text, return_tensors="pt")
+response = tokenizer.decode(model.generatr(**ipts, do_sample=True)[0], skip_special_tokens=True)
+response1 = pipe(input_text, max_length=256, do_sample=True)
+response2 = pipe(input_text, max_length=256, top_k=10)
+response3 = pipe(input_text, max_length=256, top_p=0.7)
 
 
 

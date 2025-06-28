@@ -1,7 +1,7 @@
 """
     soft-prompt-tuning 配置Prompt-Tuning的参数步骤
 
-        from peft import PromptTuningConfig, get_peft_model, TaskType, PromptTuningInit
+        from peft import PromptTuningConfig, get_peft_model, TaskType, PromptTuningInit, PeftModel
 
         PromptTuningConfig:  用于配置Prompt-Tuning微调的参数信息
 
@@ -35,9 +35,9 @@
 
 
 """
-from peft import PromptTuningConfig, get_peft_model, TaskType, PromptTuningInit
+from peft import PromptTuningConfig, get_peft_model, TaskType, PromptTuningInit, PeftModel
 from datasets import Dataset
-from transformers import AutoTokenizer, AutoModelForCausalLM, DataCollatorForSeq2Seq, TrainingArguments, Trainer, PeftModel
+from transformers import AutoTokenizer, AutoModelForCausalLM, DataCollatorForSeq2Seq, TrainingArguments, Trainer
 
 
 # 加载数据集

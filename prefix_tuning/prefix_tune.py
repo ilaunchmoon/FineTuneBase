@@ -1,32 +1,36 @@
 """
-    P-tuning 配置Prompt-Tuning的参数步骤
+    Prefix-tuning 配置 Prefix-tuning的参数步骤
 
-        from peft import PromptEncoderConfig, TaskType, get_peft_model, PromptEncoderReparameterizationType, PeftModel
+        from peft import PrefixTuningConfig, TaskType, get_peft_model, PeftModel
 
-        PromptEncoderConfig:  用于配置P-Tuning微调的参数信息
+        PrefixTuningConfig:  用于配置Prefix-tuning微调的参数信息
 
-        get_peft_model: 通过它结合PromptEncoderConfig获取一个P-Tuning微调的模型
+        get_peft_model: 通过它结合PromptEncoderConfig获取一个Prefix-tuning微调的模型
 
         TaskType: 任务类型, peft有很多中任务类型, 所以需要它来指明任务类型
-
-        PromptEncoderReparameterizationType: 用于配置对P-prompt词嵌入后的向量是使用MLP进行编码和还是使用LSTM进行编码
 
         PeftModel: 用于加载基座模型和Prefix-tuning微调训练好的检查点文件, 即类似将基座模型和微调好的权重合并成一个模型, 这个模型就是微调训练好的模型
 
 
-        step1: 配置P-tuning的微调参数config
+
+    Prefix-tuning 操作步骤
+
+        step1: 初始化可训练前缀向量
+        step2: 投影层转换​​(可选), 将前缀prompt词嵌入结果进行MLP投影编码, 它是通过prefix_projection来设置是否开启, encoder_hidden_size来设置这个MLP的隐藏层维度
+        step3: 分层参数化 & Key/Value 投影​​
+        step4: 整合进 past_key_values
+        
+
+
+    Prefix-tuning 配置
+
+        step1: 配置Prefix-tuning的微调参数config
                 
                 task_type=TaskType.CAUSAL_LM,           # 指明为因果生成任务, TaskType类下有很多中任务: 如SEQ_CLS(文本分类)等
+                prefix_projection=True,                 # 用于设置是否使用的全连接层(默认为False), 即将prefix-prompt词嵌入的结果是否先经过全连接层, 一般设置为True会引入更多的可学习参数, 能够让微调效果更好
+                encoder_hidden_size=2048,               # 设置编码层的隐藏维度, 即将prompt词嵌入结果进行编码的编码层的隐藏层维度, 注意它不是LLM注意力模块的编码器, 而是进入注意力机制前的一个编码层
                 num_virtual_tokens=10,                  # 由于是soft-prompt-tuning, 则只需要设定prompt的长度, 不需要设定具体prompt的内容, 如果是hard-prompt-tuning的话还需要设置具体prompt内容
 
-                (1) 当encoder_reparameterization_type=PromptEncoderReparameterizationType.LSTM,  即选择使用LSTM作为编码层, 则它可以结合如下参数进行配合
-                        encoder_dropout=0.2,                    # 用于指定LSTM的中dropout
-                        encoder_hidden_size=1024,               # 用于指定LSTM的中隐藏层维度
-                        encoder_num_layers=2,                   # 用于指定LSTM的层数
-
-                        
-                (2) encoder_reparameterization_type=PromptEncoderReparameterizationType.MLP,     即指明使用MLP对soft-prompt的词嵌入进行编码
-                        encoder_hidden_size=1024,               # 用于指定MLP的中隐藏层维度, 当前为MLP时, 只有这个参数可以设置, 其余设置都没有用
                 
                 注意: 这些都会影响最终可训练的参数量
 
@@ -48,7 +52,7 @@
 
 
 """
-from peft import PromptEncoderConfig, TaskType, get_peft_model, PromptEncoderReparameterizationType, PeftModel
+from peft import PrefixTuningConfig, TaskType, get_peft_model, PeftModel
 from datasets import Dataset
 from transformers import AutoTokenizer, AutoModelForCausalLM, DataCollatorForSeq2Seq, TrainingArguments, Trainer
 
@@ -111,28 +115,19 @@ model = AutoModelForCausalLM.from_pretrained("/Users/icur/CursorProjects/FineTun
 
 
 # 配置prompt tuning
-config_LSTM = PromptEncoderConfig(
+config = PrefixTuningConfig(
     task_type=TaskType.CAUSAL_LM,           # 指明为因果生成任务, TaskType类下有很多中任务: 如SEQ_CLS(文本分类)等
-    encoder_reparameterization_type=PromptEncoderReparameterizationType.LSTM,        # 指明使用LSTM对soft-prompt的词嵌入进行编码
-    encoder_dropout=0.2,                    # 用于指定LSTM的中dropout
-    encoder_hidden_size=1024,               # 用于指定LSTM的中隐藏层维度
-    encoder_num_layers=2,                   # 用于指定LSTM的层数
-    num_virtual_tokens=10,                  
-)
-
-# 使用MLP作为编码器
-config_MLP = PromptEncoderConfig(
-    task_type=TaskType.CAUSAL_LM,           # 指明为因果生成任务, TaskType类下有很多中任务: 如SEQ_CLS(文本分类)等
-    encoder_reparameterization_type=PromptEncoderReparameterizationType.MLP,        # 指明使用MLP对soft-prompt的词嵌入进行编码
-    encoder_hidden_size=1024,               # 用于指定MLP的中隐藏层维度, 当前为MLP时, 只有这个参数可以设置, 其余设置都没有用
+    prefix_projection=True,                 # 用于设置是否使用的全连接层(默认为False), 即将prefix-prompt词嵌入的结果是否先经过全连接层
+    encoder_hidden_size=2048,               # 设置编码层的隐藏维度, 即将prompt词嵌入结果进行编码的编码层的隐藏层维度
     num_virtual_tokens=10,                  
 )
 
 
-# 根据P-tuning配置的参数来创建peft模型
-model = get_peft_model(model, config_LSTM)       # 其中model为基座模型, config就是配置P-tuning微调的参数
 
-# print(model.print_trainable_parameters())   # 可以输出使用p-tuning微调方法的可训练参数为多少:
+# 根据Prefix-tuning配置的参数来创建peft模型
+model = get_peft_model(model, config)         # 其中model为基座模型, config就是配置Prefix-tuning微调的参数
+
+# print(model.print_trainable_parameters())   # 可以输出使用Prefix-tuning微调方法的可训练参数为多少
 
 
 # 其他都不变
