@@ -19,6 +19,44 @@
 
 
 
+    关于peft几个常用类和方法的使用说明
+
+    
+        peft_model = get_peft_model(model=model, peft_config=loar_config)  
+        将基座模型转换为PEFT参数高效微调模型, model是基座模型, peft_config是高效参数微调的配置信息, 比如lora等, 只有通过这个方法get_peft_model获得的模型才可以进行微调
+
+        
+        PeftModel.from_pretrained(model=model, model_id=peft_model_checkpoint_dir)
+        从本地加载已预训练好的适配器权重
+        model: 已通过 get_peft_model 初始化的 PEFT 模型,  注意这个model必须是PEFT模型, 不能是基座模型, 即必须是get_peft_model()返回的模型
+        model_id: 包含预训练适配器权重的目录路径(如训练后保存的 LoRA 权重), 也就是微调好的权重参数检查点文件
+        将目录中的适配器权重加载到 PeftModel 的适配器模块中, 覆盖初始化时的随机权重
+        返回一个完整可用的 PeftModel (基础模型冻结 + 适配器权重加载完毕)
+
+
+        peft_model.merge_and_unload()
+
+        将适配器权重与基础模型权重合并, 并移除 PEFT 框架结构
+        将 LoRA 适配器的低秩增量权重合并到基础模型的对应模块中
+        移除所有 PEFT 相关的附加层和结构，恢复为原始模型架构
+        返回一个标准 PyTorch 模型, 即基座模型参数和微调参数权重合并在一起了, 此时它就是一个和预训练模型一个类型的模型，它与基模型不同的是, 它参数经过微调，也不再包含 PEFT 组件, 也不是PEFT模型
+
+
+        merged_model.save_pretrained(merged_model_dir)
+        就是将上一步合并之后返回的合并模型进行本地保存
+        将合并后的完整模型保存到磁盘
+        保存后的模型是独立完整的, 无需 PEFT 库即可加载, 可直接用于推理部署
+
+
+        PeftModel.save_pretrained(adpater_dir)
+        如果是使用PeftModel进行save_pretrained保存, 那么保存的文件仅仅包含微调训练好的权重文件, 不包含任何基座模型的文件
+        那么加载时就有加载基座模型和对应微调adpater_dir文件
+        等效PeftModel.save_adapter(save_directory, "default")
+        
+
+        PeftModel.save_adapter()
+        只保存 PEFT 特有的适配器权重(如 LoRA 的低秩矩阵), 不包含基础模型的原始权重
+        那么加载时就有加载基座模型和对应微调adpater_dir文件
 
 
 """

@@ -139,6 +139,7 @@ config = LoraConfig(
 # 根据lora配置的参数来创建peft模型
 model = get_peft_model(model, config)         # 其中model为基座模型, config就是配置lora微调的参数
 
+
 # print(model.print_trainable_parameters())   # 可以输出使用lora微调方法的可训练参数为多少
 
 
@@ -174,7 +175,7 @@ peft_model_checkpoint_dir=""
 
 # model为基座模型, mode_id为微调好后存放的checkpoint文件的路径名
 # 需要注意的是: 使用peft_model要确保输入的测试数据和微调后模型在同一个device上
-peft_model = PeftModel.from_pretrained(model=model, mode_id=peft_model_checkpoint_dir)   
+peft_model = PeftModel.from_pretrained(model=model, model_id=peft_model_checkpoint_dir)   
 
 # 将基座模型和lora微调训练得到权重进行合并
 merged_model = peft_model.merge_and_unload()

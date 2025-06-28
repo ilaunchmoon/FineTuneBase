@@ -78,6 +78,7 @@ peft_model.save_pretrained("./lora_model")
 # 将基座模型和lora微调参数一起加载起来
 model = PeftModel(model, model_id="./lora_model")
 
+
 # 开启禁用适配器
 with model.disable_adapter():
     # 在这个作用域下进行模型推理都不会使用lora微调的权重
