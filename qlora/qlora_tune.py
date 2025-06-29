@@ -1,3 +1,31 @@
+"""
+    QLora思想
+
+        本质就是在加载基座模型的时候对基座模型进行4bit的量化操作, 能够进一步降低显存资源
+        在微调训练的时候量化的基座模型参数被冻结, 不会参与更新
+        并且在微调训练过程中, 基座模型前向计算和方向计算都会将当前需要的基座模型参数进行反量化, 然后再进行前向传播或反向传播
+
+    
+        
+    做法:
+
+        step1: 配置BitsAndBytesConfig()用于QLora的量化参数
+
+        step2: 使用上一步配置量化参数, 对基座模型进行4bit量化, 再进行加载, 即加载一个被量化的基座模型
+
+        step3: 对已经量化的基座模型在微调训练中提供反量化、修复梯度检查点问题等功能  model = prepare_model_for_kbit_training(model)  # 传入的参数model是一个量化的基座模型
+
+        step4: 使用LoarConfig配置Lora微调所需要的参数
+
+        step5: 使用get_peft_model()获取Qlora微调模型
+
+        step6: 配置训练参数和训练器, 开启微调训练
+
+        注意: 以上这几步严格按照如上顺序, 尤其是不能先使用get_peft_model()获取Qlora微调模型, 再执行model = prepare_model_for_kbit_training(model), 否则一定会错
+
+"""
+
+
 from peft import LoraConfig, TaskType, get_peft_model, PeftModel, prepare_model_for_kbit_training
 from datasets import Dataset
 from transformers import (
