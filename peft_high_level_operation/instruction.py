@@ -61,7 +61,7 @@
 
         微调的一般操作步骤如下:
 
-            定义微调的参数PeftConfig, 有LoraConfig、LoraQConfig、PromptTuningConfig、PromptEncoderConfig、PrefixTuningConfig、IA3Config、AdaLoraConfig
+            定义微调的参数PeftConfig, 有LoraConfig、PromptTuningConfig、PromptEncoderConfig、PrefixTuningConfig、IA3Config、AdaLoraConfig
 
             定义Peft模型, 需要结合基座模型和上一步配置的微调参数, 使用get_peft_model(model=model, peft_config)来初始化可以用于微调的训练的Peft模型
 
