@@ -21,7 +21,7 @@
 
         10. 开启验证: Trainer.evaluate()
 
-        11. 开启测试: Trainer.test()
+        11. 开启测试: Trainer.predict()
 
     
         

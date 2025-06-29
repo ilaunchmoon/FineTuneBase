@@ -59,4 +59,25 @@
         那么加载时就有加载基座模型和对应微调adpater_dir文件
 
 
+        微调的一般操作步骤如下:
+
+            定义微调的参数PeftConfig, 有LoraConfig、LoraQConfig、PromptTuningConfig、PromptEncoderConfig、PrefixTuningConfig、IA3Config、AdaLoraConfig
+
+            定义Peft模型, 需要结合基座模型和上一步配置的微调参数, 使用get_peft_model(model=model, peft_config)来初始化可以用于微调的训练的Peft模型
+
+            配置训练参数TrainingArguments
+
+            配置训练器, 结合定义Peft模型和配置的训练参数
+
+            定义评估函数和评估器
+
+            开启训练
+
+            加载微调适配器权重和基座模型来进行微调模型推理, 一般会设计使用 PeftModel.from_pretrained(model=model, model_id="上面保存的检查点文件地址")  其实model_id就是微调的权重文件
+
+            推理判断微调的结果, 可以考虑将微调权重和基座模型进行合并, 并卸载适配器组件, 得到和基座模型类型一样的模型, 只不过当前合并之后的模型里面含有微调权重, 需要使用 merged_model = PeftModel.merge_and_unload(), 返回的是merge模型
+
+            最后将合并好的模型保存在本地, 使用merged_model模型保存在本地, merged_model.save_pretrained(merged_model_dir)
+            
+            
 """

@@ -3,10 +3,10 @@
 
         使用梯度累加保存和累加梯度更新的方式: 即通过设置每多少个batch训练之后, 进行一次梯度更新, 每进行多次批次训练进行一次梯度激活部分梯度信息
 
-         gradient_checkpointing = True: 在反向传播期间有选择性地重新计算中间激活值, 而不是存储所有中间激活值, 从而实现降低显存的使用
+        gradient_checkpointing = True: 在反向传播期间有选择性地重新计算中间激活值, 而不是存储所有中间激活值, 从而实现降低显存的使用
 
         实现方法:  将训练和验证批次都设置为1, 然后  gradient_accumulation_steps 设置为大于1的数, 一般设置为32, 看具体显存来定, 
-                  再设置 gradient_checkpointing = True 且g radient_accumulation_steps = 32, 代表每训练32批次数据更新一次梯度, 并保存一次模型训练结果
+                  再设置 gradient_checkpointing = True 且gradient_accumulation_steps = 32, 代表每训练32批次数据更新一次梯度, 并保存一次模型训练结果
 
         注意: 不会影响llm训练效果, 只会增加更多的训练时间
 

@@ -5,9 +5,9 @@
 
             def _info(self)->DatasetInfo:
                 
-                该方法要做到如下：
+                该方法要做到如下: 
 
-                    定义数据集的信息，数据集中所有字段都要进行定义, 即一条完整的数据条目有哪些字段
+                    定义数据集的信息, 数据集中所有字段都要进行定义, 即一条完整的数据条目有哪些字段
                     一般description:str="用于描述数据集的信息", 需要有但是不重要
                     
                     如下就是定义一个完整数据条目的所有信息和层级关系, 一般都是使用字典的形式来定义, 它也会被返回
@@ -28,8 +28,8 @@
 
             def _split_generators(self, dl_manager:DownloadManager):
                 
-                该方法具有如下要求: 主要是用于datasets中split参数功能的实现，方便进行数据集分割为训练集或测试集或验证集
-                                   即主要功能是为了实现如何进行分割数据集合
+                该方法具有如下要求: 主要是用于datasets中split参数功能的实现, 方便进行数据集分割为训练集或测试集或验证集
+                                 即主要功能是为了实现如何进行分割数据集合
                 
                 dl_manager: 
 
@@ -44,13 +44,13 @@
                 
 
             def _generate_example(self, filepath):
-                该函数时最重要的函数, 它定义读取自定义数据、加载自定义数据，按照上面定义好字段进行组合数据，本质就是解析原始数据, 这里解析json复杂数据为例说明
-                一般都是结合yeid来实现惰性加载，否则数据集太大一次加载充爆内存
+                该函数时最重要的函数, 它定义读取自定义数据、加载自定义数据, 按照上面定义好字段进行组合数据, 本质就是解析原始数据, 这里解析json复杂数据为例说明
+                一般都是结合yeid来实现惰性加载, 否则数据集太大一次加载充爆内存
 
                 with open("文件路径", mode="r", encoding="utf-8") as f:
                     data = json.load(f)  # json文件解析
                     for example in data["data"]:        # 由于json文件真正的数据内容在该文件的data字段下, 所以只需读取该字段的内容即可
-                        for paragraph in example["paragraph"]:       # data字段下具有：多个paragraph字段，
+                        for paragraph in example["paragraph"]:       # data字段下具有: 多个paragraph字段, 
                             context = paragraph["context"].strip()                                        # paragraph字段下具有如下字段: context, qas字段, 而qas字段下又具有多个字段
                             for qa in paragraph["qas"]:         # qas下又具有: question、id、answers、answer_start多个字段
                                 question = qa["question"].strip()
@@ -58,7 +58,7 @@
                                 answer_start = [answer["answer_start"] for answer in qa["answers"]]     # 由于具有多个, 所以采用list存放
                                 answers = [answer["text"] for answer in qa["answers"]]                  # 由于具有多个, 所以采用list存放
 
-                                # 特别注意: 这里返回的字段和字段直接的结果类型，必须和_info方法中定义的一模一样，否则会报错
+                                # 特别注意: 这里返回的字段和字段直接的结果类型, 必须和_info方法中定义的一模一样, 否则会报错
                                 yield id_, {
                                     "context": context,
                                     "question": question,
@@ -70,7 +70,7 @@
                                 }
 
 
-        使用：
+        使用: 
 
             使用的时候, 直接将带有上面来的脚本传入到load_dataset()中
             
