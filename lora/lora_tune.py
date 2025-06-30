@@ -26,7 +26,7 @@
                 
             注意: 这些都会影响最终可训练的参数量
 
-        step2: 使用get_peft_model(), 结合prompt-tuning配置好的参数config和基座模型创建微调的模型
+        step2: 使用get_peft_model(), 结合lora配置好的参数config和基座模型创建微调的模型
 
         
         step3: 其他都和之前一样

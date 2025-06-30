@@ -11,7 +11,7 @@
 
         PromptEncoderReparameterizationType: 用于配置对P-prompt词嵌入后的向量是使用MLP进行编码和还是使用LSTM进行编码
 
-        PeftModel: 用于加载基座模型和Prefix-tuning微调训练好的检查点文件, 即类似将基座模型和微调好的权重合并成一个模型, 这个模型就是微调训练好的模型
+        PeftModel: 用于加载基座模型和P-tuning微调训练好的检查点文件, 即类似将基座模型和微调好的权重合并成一个模型, 这个模型就是微调训练好的模型
 
 
         step1: 配置P-tuning的微调参数config
