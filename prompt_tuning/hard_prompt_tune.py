@@ -111,7 +111,7 @@ config = PromptTuningConfig(
 
 
 # 根据prompt-tuning配置的参数来创建peft模型
-model = get_peft_model(model, config)         # 其中model为基座模型, config就是配置prompt-tuning微调的参数
+model = get_peft_model(model, config)         # 其中参数model为基座模型, config就是配置prompt-tuning微调的参数, 返回的模型是能够用于进行微调的模型peftmodel
 
 # print(model.print_trainable_parameters())   # 可以输出使用prompt-tuning微调方法的可训练参数为多少: trainable params: 10,240 || all params: 345,779,200 || trainable%: 0.0030
 

@@ -79,6 +79,7 @@ def replace_lora_linear(
                 require_grad = layer_norm_requires_grad
             else:
                 require_grad = lm_head_requires_grad
+                
             for param in child.parameters():
                 param.requires_grad = require_grad
 
