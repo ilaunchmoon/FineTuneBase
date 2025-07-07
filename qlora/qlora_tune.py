@@ -1,11 +1,13 @@
 """
     QLora思想
 
-        本质就是在加载基座模型的时候对基座模型进行4bit的量化操作, 能够进一步降低显存资源
+        本质就是在加载基座模型的时候对基座模型进行NF4bit的量化操作, 能够进一步降低显存资源
         在微调训练的时候量化的基座模型参数被冻结, 不会参与更新
         并且在微调训练过程中, 基座模型前向计算和方向计算都会将当前需要的基座模型参数进行反量化, 然后再进行前向传播或反向传播
 
-    
+        
+
+
         
     做法:
 
@@ -81,11 +83,12 @@ tokenizer = AutoTokenizer.from_pretrained("/Users/icur/CursorProjects/FineTuneBa
 tokenized_ds = ds.map(process_func, batched=True, remove_columns=ds.column_names)
 
 # ========== QLoRA关键修改1：量化配置 ==========
+# 其实这些参数也可以直接在.from_pretrained()中进行设置
 bnb_config = BitsAndBytesConfig(
-    load_in_4bit=True,              # 启用4位量化
-    bnb_4bit_quant_type="nf4",      # 使用NormalFloat4量化类型
-    bnb_4bit_compute_dtype=torch.bfloat16,  # 计算时使用bfloat16
-    bnb_4bit_use_double_quant=True, # 启用双重量化进一步压缩
+    load_in_4bit=True,              # 启用4位量化加载
+    bnb_4bit_quant_type="nf4",      # 使用NormalFloat4量化类型, 即4bit量化, 使用的是4bit的分位量化技术,
+    bnb_4bit_compute_dtype=torch.bfloat16,  # 模型前向或反向计算时使用bfloat16, torch.bfloat16就是torch.half
+    bnb_4bit_use_double_quant=True, # 启用双重量化进一步压缩, 即双重量化 量化常数
 )
 
 # ========== QLoRA关键修改2：量化加载模型 ==========
@@ -127,7 +130,7 @@ training_args = TrainingArguments(
     logging_steps=10,
     learning_rate=2e-4,              # QLoRA通常使用稍高的学习率
     fp16=True,                       # 使用混合精度训练
-    optim="paged_adamw_8bit",        # 使用分页的8位优化器
+    optim="paged_adamw_8bit",        # 使用分页的8位优化器, 注意这是Qlora特有的分页优化器, 还可以是: paged_adamw_8bit、paged_adamw_32bit, 可以从OptimizerNames()中查询
     report_to="none",
     max_grad_norm=0.3,               # 梯度裁剪
     warmup_ratio=0.03,               # 学习率预热

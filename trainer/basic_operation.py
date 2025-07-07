@@ -65,7 +65,7 @@
                                                         注意: 一般batch=1与验证批次都是设置为1, 配合 gradient_accumulation_steps > 1的数来设置
                                                              但是每次训练和验证一个批次, 那么会需要更长的训练时间
 
-        gradient_checkpointing
+        gradient_checkpointing                          代表开启梯度检查点, 如果开启这个, 模型在加载完毕之后要执行model.enable_input_require_grads(), 否则会保存
 
 
 

@@ -1,11 +1,11 @@
 """
         adalora 配置 adalora的参数步骤
 
-        from peft import adaloraConfig, TaskType, get_peft_model, 
+        from peft import AdaLoraConfig, TaskType, get_peft_model, 
 
-        adaloraConfig:  用于配置adalora微调的参数信息
+        AdaLoraConfig:  用于配置adalora微调的参数信息
 
-        get_peft_model: 通过它结合adaloraConfig获取一个adalora微调的模型
+        get_peft_model: 通过它结合AdaLoraConfig获取一个adalora微调的模型
 
         TaskType: 任务类型, peft有很多中任务类型, 所以需要它来指明任务类型
 
@@ -14,7 +14,7 @@
 
     adalora 配置
 
-        step1: 配置adalora的微调参数config
+        step1: 配置adalora的微调参数AdaLoraConfig()
             
                 task_type=TaskType.CAUSAL_LM,                           # 下游任务类型
                 target_modules=["query_key_value", "dense_4h_to_h"],    # 针对特定模型的模块
