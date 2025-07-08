@@ -56,7 +56,13 @@
             注意: 以上是针对你自己实现train()等方法需要修改的地方, 如果你是transformers中自带的Trainer()结合TrainingArguments()训练器来训练
                  无需修改任何代码, 就可以实现数据并行训练, 它会自动识别当前环境下有多个GPU, 进而自动实现数据并行训练
     
-                
+                 
+                 使用  model = nn.DataParallel(model, device_ids=None) 如果要获取真正的模型需要使用 model.moduls()来获取
+                 因为使用  nn.DataParallel(model, device_ids=None) 在最外层套了一层 DataParallel()模块, 真正的模型model是DataParallel().modules()
+                 这个在模型推理的时候需要使用, 因为真正推理的时候, 是需要使用真正的modle来进行的, 而不能使用DataParallel()来进行推理
+                 比如: 在RAG系统中需要对文本进行批次处理和tokenize化, 此时可以考虑使用DP并行推理的方式批次输入给LLM, 来加速模型推理
+                 
+                 
     DP的问题:
 
         pytorch中nn.DataParallel()的实现数据并行的方式, 在数据批次较大的时候才能明显表现出训练优势, 并且 pytorch中nn.DataParallel() 速度提高并没有其他分布式加速包来得快, 后续会介绍
@@ -67,6 +73,12 @@
         问题4: 只适合单机多卡进行数据并行训练, 不适合多机多卡的真正分布式集群训练
 
     
+    DP的适用场景
+
+        看到上面的问题, DP实际在开发场景下只适合使用在模型推理的阶段, 即适用适用多卡来加速模型推理, 而不是用来进行多卡训练
+
+    
+        
 
         
 
