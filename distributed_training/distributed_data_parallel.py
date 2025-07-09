@@ -174,6 +174,8 @@ train()
        但是这会有一个问题: 若训练数据共有99条, 但是训练的batch_size = 50, 那么必定会有一个进程只有49条数据, 但是DDP为了保证各进程中训练数据条目数一致的
        那么会让少于50的那个进程使用padding填充为50条数据, 但这明显是不合理的, 这个问题需要等到accelerate来解决
 
+       见: /Users/icur/CursorProjects/FineTuneBase/accelerate/ddp_with_accelerate.py
+       evaluate()函数中 accelerator.gather_for_metrics(pred, batch["label"]) 的用法来解决该问题
     
     
 
